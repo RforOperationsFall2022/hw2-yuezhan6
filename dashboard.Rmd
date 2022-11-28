@@ -1,0 +1,97 @@
+---
+title: "Stocks Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+runtime: shiny
+---
+
+```{r context="setup", include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(dygraphs)
+library(xts)
+
+# import data from csv files
+data_aapl <- read_csv("./stocks/AAPL_2006-01-01_to_2018-01-01.csv")
+data_amzn <- read_csv("./stocks/AMZN_2006-01-01_to_2018-01-01.csv")
+data_googl <- read_csv("./stocks/GOOGL_2006-01-01_to_2018-01-01.csv")
+data_ibm <- read_csv("./stocks/IBM_2006-01-01_to_2018-01-01.csv")
+
+data_stocks <- rbind(data_aapl, data_amzn, data_googl, data_ibm)
+
+data_stocks.load <- data_stocks %>%
+  mutate(Date = as.Date(Date, format="%Y-%m-%d"),
+         Company = ifelse(Name == "AAPL", "Apple",
+                   ifelse(Name == "AMZN", "Amazon",
+                   ifelse(Name == "GOOGL", "Google",
+                   "IBM"))))
+
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+checkboxGroupInput("cp", "Companies", choices = c("Apple", "Amazon", "Google", "IBM"),
+                   selected = c("Apple"), inline = FALSE
+                   )
+
+dateRangeInput("dr", "Choose Date Range:",
+          start = min(data_stocks.load$Date),
+          end   = max(data_stocks.load$Date),
+          min   = "2006-01-01",
+          max   = "2017-12-31",
+          format = "mm/dd/yy",
+          separator = " - ")
+
+radioButtons("plot_type", "Stocks plot type", 
+             choices = c("Line plot", "Violin plot"), selected = c("Line plot"))
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+stocks_subset <- reactive({
+  data_stocks.load %>%
+    filter(
+      Date >= input$dr[1],
+      Date <= input$dr[2],
+      Company %in% input$cp
+    )
+})
+
+renderPlot({
+  if (input$plot_type == "Line plot"){
+    ggplot(stocks_subset(), aes(x=Date, y=High, color = Company)) +
+    geom_point() +
+    geom_line() +
+    scale_color_brewer(palette = "Set1") +
+    xlab("Date") +
+    ylab("Wind: mph / Temp: degrees F") +
+    labs(color = "Measurement", caption = "Source: National Weather Service") +
+    ggtitle("Observed Wind and Temperature", subtitle = "New York City 1973")
+  }
+  
+  else {
+    dygraph(stocks_subset()[,2:3], main = "Stock Price") %>%
+      dyRangeSelector()
+  }
+})
+```
+
+### Chart C{data-width=340}
+
+```{r}
+DT::renderDataTable(
+  subset(stocks_subset(), select = c(Date, Open, High, Low, Close, Volume))
+  )
+```
+
