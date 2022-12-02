@@ -15,8 +15,6 @@ library(dplyr)
 library(readr)
 library(dygraphs)
 library(xts)
-library(quantmod)
-library(ts)
 
 # import data from csv files
 data_aapl <- read_csv("./stocks/AAPL_2006-01-01_to_2018-01-01.csv")
@@ -134,7 +132,7 @@ Row
 
 ```{r}
 DT::renderDataTable(
-  subset(stocks_subset(), select = c(Date, Open, High, Low, Close, Volume))
+  subset(stocks_subset(), select = c(Name, Date, Open, High, Low, Close, Volume))
   )
 ```
 
