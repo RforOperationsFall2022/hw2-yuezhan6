@@ -2,8 +2,8 @@
 title: "Stocks Dashboard"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: scroll
+    orientation: rows
+    # vertical_layout: scroll
 runtime: shiny
 ---
 
@@ -31,6 +31,12 @@ data_stocks.load <- data_stocks %>%
                    ifelse(Name == "GOOGL", "Google",
                    "IBM"))))
 
+# data_aapl_ts <- xts(data_aapl, )
+data_aapl_xts <- as.xts(data_aapl, order.by=data_aapl$Date, dateFormat="POSIXct")
+data_amzn_xts <- as.xts(data_amzn, order.by=data_amzn$Date, dateFormat="POSIXct")
+data_googl_xts <- as.xts(data_googl, order.by=data_googl$Date, dateFormat="POSIXct")
+data_ibm_xts <- as.xts(data_ibm, order.by=data_ibm$Date, dateFormat="POSIXct")
+
 ```
 
 Inputs {.sidebar}
@@ -42,19 +48,20 @@ checkboxGroupInput("cp", "Companies", choices = c("Apple", "Amazon", "Google", "
                    )
 
 dateRangeInput("dr", "Choose Date Range:",
-          start = min(data_stocks.load$Date),
-          end   = max(data_stocks.load$Date),
+          start = "2017-10-31",
+          end   = "2017-11-31",
           min   = "2006-01-01",
           max   = "2017-12-31",
           format = "mm/dd/yy",
+          startview = 'year',
           separator = " - ")
 
 radioButtons("plot_type", "Stocks plot type", 
              choices = c("Line plot", "Violin plot"), selected = c("Line plot"))
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
+Row 
+-------------------------------------
 
 ### Chart B
 
@@ -68,26 +75,9 @@ stocks_subset <- reactive({
     )
 })
 
-renderPlot({
-  if (input$plot_type == "Line plot"){
-    ggplot(stocks_subset(), aes(x=Date, y=High, color = Company)) +
-    geom_point() +
-    geom_line() +
-    scale_color_brewer(palette = "Set1") +
-    xlab("Date") +
-    ylab("Wind: mph / Temp: degrees F") +
-    labs(color = "Measurement", caption = "Source: National Weather Service") +
-    ggtitle("Observed Wind and Temperature", subtitle = "New York City 1973")
-  }
-  
-  else {
-    dygraph(stocks_subset()[,2:3], main = "Stock Price") %>%
-      dyRangeSelector()
-  }
-})
 ```
 
-### Chart C{data-width=340}
+### Chart C
 
 ```{r}
 DT::renderDataTable(
@@ -95,3 +85,41 @@ DT::renderDataTable(
   )
 ```
 
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Apple
+
+```{r}
+renderDygraph({
+  dygraph(data_aapl_xts[,3:4], main="Stock Price") %>%
+    dyRangeSelector(dateWindow = c(input$dr[1], input$dr[2]))
+})
+```
+
+### Amazon
+
+```{r}
+renderDygraph({
+  dygraph(data_amzn_xts[,3:4], main="Stock Price") %>%
+    dyRangeSelector(dateWindow = c(input$dr[1], input$dr[2]))
+})
+```
+
+### Google
+
+```{r}
+renderDygraph({
+  dygraph(data_googl_xts[,3:4], main="Stock Price") %>%
+    dyRangeSelector(dateWindow = c(input$dr[1], input$dr[2]))
+})
+```
+
+### IBM
+
+```{r}
+renderDygraph({
+  dygraph(data_ibm_xts[,3:4], main="Stock Price") %>%
+    dyRangeSelector(dateWindow = c(input$dr[1], input$dr[2]))
+})
+```
