@@ -15,6 +15,8 @@ library(dplyr)
 library(readr)
 library(dygraphs)
 library(xts)
+library(reshape)
+library(tidyr)
 
 # import data from csv files
 data_aapl <- read_csv("./stocks/AAPL_2006-01-01_to_2018-01-01.csv")
@@ -42,34 +44,34 @@ Inputs {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r}
-checkboxGroupInput("cp", "Companies", choices = c("Apple", "Amazon", "Google", "IBM"),
+checkboxGroupInput("cp", "Selected Companies", choices = c("Apple", "Amazon", "Google", "IBM"),
                    selected = c("Apple"), inline = FALSE
                    )
 
-dateRangeInput("dr", "Choose Date Range:",
-          start = "2009-10-31",
-          end   = "2010-10-31",
+dateRangeInput("dr", "Selected Date Range:",
+          start = "2009-12-01",
+          end   = "2010-12-01",
           min   = "2006-01-01",
           max   = "2017-12-31",
           format = "mm/dd/yy",
           startview = 'year',
           separator = " - ")
 
-radioButtons("plot_type", "Stocks plot type", 
-             choices = c("Line plot", "Violin plot"), selected = c("Line plot"))
+radioButtons("plot_type", "Selected Plots", 
+             choices = c("Stock Price Trend", "Days of Price Up & Down"), selected = c("Stock Price Trend"))
 
-checkboxGroupInput("price", "Choose prices", choices = c("Open", "High", "Low", "Close"),
+checkboxGroupInput("price", "Select Price Types", choices = c("Open", "High", "Low", "Close"),
                    selected = c("High", "Low"), inline = FALSE
                    )
 ```
 
-Row
+Column
 -----------------------------------------------------------------------
 
-### Avg. Volume {.value-box}
+### Avg. Volume (Selected Companies) {.value-box}
 
 ```{r}
-stocks_subset <- reactive({
+stocks_choose_subset <- reactive({
   data_stocks.load %>%
     filter(
       Date >= input$dr[1],
@@ -80,7 +82,7 @@ stocks_subset <- reactive({
 
 # Emit the download rate
 renderValueBox({
-  avg.volume <- mean(stocks_subset()$Volume)  # format(round(as.numeric(avg.volume), 1), nsmall=1, big.mark=",")
+  avg.volume <- mean(stocks_choose_subset()$Volume)  # format(round(as.numeric(avg.volume), 1), nsmall=1, big.mark=",")
   valueBox(
     value = format(round(as.numeric(avg.volume), 1), nsmall=1, big.mark=","),
     icon = "fa-area-chart",
@@ -88,31 +90,106 @@ renderValueBox({
 })
 ```
 
-### Highest Price {.value-box}
+### AAPL Change {.value-box}
 
 ```{r}
 
-# Emit the download rate
+stocks_subset <- reactive({
+  data_stocks.load %>%
+    filter(
+      Date >= input$dr[1],
+      Date <= input$dr[2],
+    )
+})
+
 renderValueBox({
-  price.range.top <- max(stocks_subset()$High)  # format(round(as.numeric(avg.volume), 1), nsmall=1, big.mark=",")
+  aapl.range <- stocks_subset() %>%
+    filter(Name == "AAPL",
+           Date %in% input$dr)
+  aapl.start <- stocks_subset() %>%
+    filter(Name == "AAPL",
+           Date == input$dr[1])
+  aapl.end <- stocks_subset() %>%
+    filter(Name == "AAPL" & Date == input$dr[2])
+  aapl.change <- ifelse(any(is.na(aapl.range))==TRUE, "10",
+                         scales::percent((aapl.end$Close - aapl.start$Close)/aapl.start$Close))
   valueBox(                                     # price.range.low <- min(stocks_subset()$Low)
-    value = round(price.range.top,2),
-    icon = "fa-arrow-up",
+    value = aapl.change,
+    # value = round(price.two.ends$Close[1],2),
+    icon = if(aapl.change >= 0) "fa-arrow-up" else "fa-arrow-down",
+    color = if(aapl.change >= 0) "primary" else "warning"
   )
 })
 ```
 
 
-### Lowest Price {.value-box}
+### AMZN Change {.value-box}
 
 ```{r}
 
-# Emit the download rate
 renderValueBox({
-  price.range.low <- min(stocks_subset()$Low)  # format(round(as.numeric(avg.volume), 1), nsmall=1, big.mark=",")
+  amzn.range <- stocks_subset() %>%
+    filter(Name == "AMZN",
+           Date %in% input$dr)
+  amzn.start <- stocks_subset() %>%
+    filter(Name == "AMZN",
+           Date == input$dr[1])
+  amzn.end <- stocks_subset() %>%
+    filter(Name == "AMZN" & Date == input$dr[2])
+  amzn.change <- scales::percent((amzn.end$Close - amzn.start$Close)/amzn.start$Close)
   valueBox(                                     # price.range.low <- min(stocks_subset()$Low)
-    value = round(price.range.low,2),
-    icon = "fa-arrow-down",
+    value = amzn.change,
+    # value = round(price.two.ends$Close[1],2),
+    icon = if(amzn.change >= 0) "fa-arrow-up" else "fa-arrow-down",
+    color = if(amzn.change >= 0) "primary" else "warning",
+  )
+})
+```
+
+
+### GOOGL Change {.value-box}
+
+```{r}
+
+renderValueBox({
+  googl.range <- stocks_subset() %>%
+    filter(Name == "GOOGL",
+           Date %in% input$dr)
+  googl.start <- stocks_subset() %>%
+    filter(Name == "GOOGL",
+           Date == input$dr[1])
+  googl.end <- stocks_subset() %>%
+    filter(Name == "GOOGL" & Date == input$dr[2])
+  googl.change <- scales::percent((googl.end$Close - googl.start$Close)/googl.start$Close)
+  valueBox(                                     # price.range.low <- min(stocks_subset()$Low)
+    value = googl.change,
+    # value = round(price.two.ends$Close[1],2),
+    icon = if(googl.change >= 0) "fa-arrow-up" else "fa-arrow-down",
+    color = if(googl.change >= 0) "primary" else "warning",
+  )
+})
+```
+
+
+### IBM Change {.value-box}
+
+```{r}
+
+renderValueBox({
+  ibm.range <- stocks_subset() %>%
+    filter(Name == "GOOGL",
+           Date %in% input$dr)
+  ibm.start <- stocks_subset() %>%
+    filter(Name == "GOOGL",
+           Date == input$dr[1])
+  ibm.end <- stocks_subset() %>%
+    filter(Name == "GOOGL" & Date == input$dr[2])
+  ibm.change <- scales::percent((ibm.end$Close - ibm.start$Close)/ibm.start$Close)
+  valueBox(                                     # price.range.low <- min(stocks_subset()$Low)
+    value = ibm.change,
+    # value = round(price.two.ends$Close[1],2),
+    icon = if(ibm.change >= 0) "fa-arrow-up" else "fa-arrow-down",
+    color = if(ibm.change >= 0) "primary" else "warning",
   )
 })
 ```
@@ -124,7 +201,44 @@ Row
 ### Graph
 
 ```{r}
+stocks_subset_diff <- reactive({
+  stocks_subset() %>%
+    group_by(Company) %>%
+    mutate(price.diff = Close - lag(Close)) %>%
+    ungroup()
+})
 
+stocks_subset_diff_count <- reactive({
+  stocks_subset_diff() %>%
+    group_by(Company) %>%
+    summarise(Up = sum(price.diff > 0, na.rm = TRUE),
+              Down = sum(price.diff < 0, na.rm = TRUE)) %>%
+    pivot_longer(
+      cols = Up:Down,
+      names_to = "Direction",
+      values_to = "Days"
+    )
+})
+
+renderPlot({
+  
+  if(input$plot_type == "Stock Price Trend"){
+    ggplot(stocks_subset(), aes(x = Date, y = Close, color = Company)) +
+      geom_line() +
+      theme_bw() +
+      ggtitle("Combined Stock Price Trend (During the Selected Date Range)") +
+      theme(plot.title = element_text(hjust = 0.5))
+  }
+  else {
+    ggplot(stocks_subset_diff_count(), aes(x = Company, y = Days, color = Direction, fill = Direction)) +
+      geom_bar(stat='identity',
+               position = 'dodge') +
+      theme_bw() +
+      ggtitle("Days of Price Going Up and Going Down (During the Selected Date Range)") +
+      theme(plot.title = element_text(hjust = 0.5))
+  }
+    
+})
 
 ```
 
@@ -132,7 +246,7 @@ Row
 
 ```{r}
 DT::renderDataTable(
-  subset(stocks_subset(), select = c(Name, Date, Open, High, Low, Close, Volume))
+  subset(stocks_choose_subset(), select = c(Name, Date, Open, High, Low, Close, Volume))
   )
 ```
 
