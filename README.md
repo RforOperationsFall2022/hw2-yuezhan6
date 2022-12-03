@@ -1,3 +1,6 @@
-# hw2-yuezhan6
+# Homework 2
 
-This homework is to show the understanding and implementation of dashboard.
+Title : Stock Dashboard\
+Author: Yvette Zhang\
+Publish Link: https://yuezhan6.shinyapps.io/hw2_yuezhan6_flexdashboard/
+
